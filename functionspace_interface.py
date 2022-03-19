@@ -50,7 +50,7 @@ def create_figure():
     return fig
 
 def create_3d_figure(data, active_components):
-    labels = [f'{i+1}. PCA Component' for i in sorted(active_components)]
+    labels = [f'{i+1}. PC' for i in sorted(active_components)]
     fig = px.scatter_3d(data_frame = {labels[0]: data[:,0], labels[1]: data[:,1], labels[2]: data[:,2], 'Epoch':np.arange(len(data))}, x=labels[0], y=labels[1], z=labels[2], color='Epoch', title=f'Explained Variance: {st.session_state.total_explained_variance:.2f}')
     fig.update_layout(
         scene=dict(
@@ -72,7 +72,7 @@ def create_3d_figure(data, active_components):
     return fig
 
 def create_2d_figure(data, active_components):
-    labels = [f'{i+1}. PCA Component' for i in sorted(active_components)]
+    labels = [f'{i+1}. PC' for i in sorted(active_components)]
     fig = px.scatter(data_frame = {labels[0]: data[:,0], labels[1]: data[:,1], 'Epoch':np.arange(len(data))}, x=labels[0], y=labels[1], color='Epoch', title=f'Explained Variance: {st.session_state.total_explained_variance:.2f}')
     fig.update_layout(yaxis_showticklabels=False, xaxis_showticklabels=False, coloraxis_colorbar=dict(
         tickvals=np.arange(0,len(data),100),
@@ -95,7 +95,7 @@ startup()
 
 with st.sidebar:
     # title
-    st.header('Select PCA Components')
+    st.header('Select Principal Components (up to 3)')
     
     for i in range(len(st.session_state["explained_variance_ratio"])):
         st.checkbox(f"{i+1:02d}. ({st.session_state.explained_variance_ratio[i]:.3f})", value=i in st.session_state.active, key=f"component_{i}", on_change=on_checkbox_change, args=[i])

@@ -15,6 +15,8 @@ def startup():
         st.session_state['total_explained_variance'] = 0
         st.session_state['figure'] = None
         st.session_state['startup'] = True
+        
+        st.set_page_config(layout='wide')
 
 def update_active_components(i):
     try:
@@ -51,7 +53,15 @@ def create_figure():
 
 def create_3d_figure(data, active_components):
     labels = [f'{i+1}. PC' for i in sorted(active_components)]
-    fig = px.scatter_3d(data_frame = {labels[0]: data[:,0], labels[1]: data[:,1], labels[2]: data[:,2], 'Epoch':np.arange(len(data))}, x=labels[0], y=labels[1], z=labels[2], color='Epoch', title=f'Explained Variance: {st.session_state.total_explained_variance:.2f}')
+    fig = px.scatter_3d(
+        data_frame = {labels[0]: data[:,0], labels[1]: data[:,1], labels[2]: data[:,2], 'Epoch':np.arange(len(data))}, 
+        x=labels[0], 
+        y=labels[1], 
+        z=labels[2], 
+        color='Epoch', 
+        title=f'Explained Variance: {st.session_state.total_explained_variance:.2f}',
+        width=1200, height=800,
+    )
     fig.update_layout(
         scene=dict(
             yaxis = dict(
@@ -73,7 +83,14 @@ def create_3d_figure(data, active_components):
 
 def create_2d_figure(data, active_components):
     labels = [f'{i+1}. PC' for i in sorted(active_components)]
-    fig = px.scatter(data_frame = {labels[0]: data[:,0], labels[1]: data[:,1], 'Epoch':np.arange(len(data))}, x=labels[0], y=labels[1], color='Epoch', title=f'Explained Variance: {st.session_state.total_explained_variance:.2f}')
+    fig = px.scatter(
+        data_frame = {labels[0]: data[:,0], labels[1]: data[:,1], 'Epoch':np.arange(len(data))}, 
+        x=labels[0], 
+        y=labels[1], 
+        color='Epoch', 
+        title=f'Explained Variance: {st.session_state.total_explained_variance:.2f}',
+        width=1200, height=800,
+    )
     fig.update_layout(yaxis_showticklabels=False, xaxis_showticklabels=False, coloraxis_colorbar=dict(
         tickvals=np.arange(0,len(data),100),
     ))

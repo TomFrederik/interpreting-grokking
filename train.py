@@ -162,7 +162,7 @@ if __name__ == '__main__':
     parser.add_argument("--width", type=int, default=128)
     parser.add_argument("--dropout", type=float, default=0)
     parser.add_argument("--seq_first", action="store_true", help="Whether to have time dim first or batch dim first")
-    parser.add_argument("--activation", type=str, default="gelu")
+    parser.add_argument("--activation", type=str, default="relu")
     parser.add_argument("--dim_feedforward", type=int, default=None, help='defaults to 4*width')
     
 

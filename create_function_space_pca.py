@@ -55,7 +55,8 @@ dataset = get_dataset(descr=data_name, num_elements=num_elements, data_dir=data_
 np.random.seed(42)
 
 max_dim = 10
-max_epoch = 1200
+start_epoch = 500
+stop_epoch = 600
 try:
     pca_matrix = np.load(os.path.join(f"{model_name}", 'pca_matrix.npy'))
 except:
@@ -64,9 +65,9 @@ except:
     except:
         total_logit_matrix = compute_all_matrices(ckpt_dir=ckpt_dir, dataset=dataset, device=device)
         torch.save(total_logit_matrix, f'{model_name}/total_logit_matrix.pt')
-    total_logit_matrix = total_logit_matrix[:max_epoch].numpy()
+    total_logit_matrix = total_logit_matrix[start_epoch:stop_epoch].numpy()
     pca = PCA(n_components=max_dim)
     centered_data = total_logit_matrix - np.mean(total_logit_matrix, axis=0)
     pca = pca.fit(centered_data)
     transformed_data = pca.transform(centered_data)
-    np.savez_compressed(os.path.join(f"{model_name}", 'functionspace_pca_results.npz'), transformed_data=transformed_data, explained_variance_ratio=pca.explained_variance_ratio_)
+    np.savez_compressed(os.path.join(f"{model_name}", f'functionspace_pca_results_{start_epoch}_{stop_epoch}.npz'), transformed_data=transformed_data, explained_variance_ratio=pca.explained_variance_ratio_)

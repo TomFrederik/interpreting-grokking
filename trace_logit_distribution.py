@@ -33,9 +33,7 @@ beta2 = model.transformer[0].norm2.bias
 data = torch.from_numpy(ArithmeticData(data_dir='data', func_name="minus", prime=97).data).long().to(device)
 x = data[:,:-1]
 # pass data through the 
-print(model.embedding(x))
 x = model.pos_encoding(model.embedding(x))
-print(x)
 context_len = x.shape[1]
 attn_out, _ = model.transformer[0].self_attn(x, model.self_attn_mask[:context_len,:context_len], return_attention=True)
 
@@ -57,11 +55,8 @@ mlp_logits = output_layer(scaling_factor2 * linear_out)
 beta1_logits = output_layer(beta1 * scaling_factor2)
 beta2_logits = output_layer(beta2)
 
-print(x.mean())
-num = 14
+num = 0
 idx = num * 97
-print((scaling_factor2 * summand1)[idx,-1])
-print((scaling_factor1 * scaling_factor2 * attn_out)[idx,-1])
 
 sign_agreement = rescaled_attn_logits[idx,-1,:-2] * mlp_logits[idx,-1,:-2]
 colors = list(map(lambda x: 'r' if x < 0 else 'g', sign_agreement))
@@ -72,7 +67,7 @@ print((beta2_logits + beta1_logits[idx,-1] + rescaled_prior[idx,-1] + mlp_logits
 print('')
 
 fig, axes = plt.subplots(4,1,sharex=True, gridspec_kw={'hspace': 0.5})
-fig.suptitle('14 - 0 = 14')
+fig.suptitle('0 - 0 = 0')
 axes[0].bar(np.arange(97), rescaled_prior[idx,-1,:-2].detach().cpu().numpy().flatten())
 axes[0].set_title('Rescaled Prior Logits')
 # axes[1].bar(np.arange(97), rescaled_attn_logits[idx,-1,:-2].detach().cpu().numpy().flatten())
@@ -84,5 +79,5 @@ axes[2].set_title('MLP Logits')
 axes[3].bar(np.arange(97), (rescaled_prior[idx,-1,:-2] + mlp_logits[idx,-1,:-2] + rescaled_attn_logits[idx,-1,:-2]).detach().cpu().numpy().flatten())
 axes[3].set_title('Result Logits')
 plt.xticks(np.arange(0,97,8))
-plt.show()
+plt.savefig(f'{model_name}/trace_logit_distribution.jpg')
 

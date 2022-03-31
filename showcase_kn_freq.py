@@ -31,7 +31,7 @@ def compute_mean_rankings():
 
 def generate_plots():
     for k in range(1, 21):
-        fig = px.line(st.session_state.df, x=st.session_state.epochs, y=[COL_NAMES[x] for x in st.session_state.active_neurons]], markers=True)
+        fig = px.line(st.session_state.df, x=st.session_state.epochs, y=[COL_NAMES[x] for x in st.session_state.active_neurons], markers=True)
         fig.update_layout(title=f'Top-{k} Frequency', xaxis_title='Epoch', yaxis_title='Frequency')
         # for peak in peaks:
         #     plt.axvline(x=peak, color='r', linestyle='--', linewidth=1)

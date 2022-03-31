@@ -45,12 +45,15 @@ interesting_keys = [
     335, 342, 354, 355, 365, 374, 381, 403, 412, 
     446, 453, 459, 466, 476, 482, 491
 ]
-interesting_keys = [219, 268, 403, 446]
+interesting_keys = [8,14]
 
 for i in interesting_keys:
     lesioned_keys = keys.clone()
-    # lesioned_keys[:,i] = 0
-    lesioned_keys[:,[219, 268, 446]] = 0
+    print(f"{lesioned_keys.shape = }")
+    print(lesioned_keys[:,8])
+    break
+    lesioned_keys[:,i] = 0
+    # lesioned_keys[:,[219, 268, 446]] = 0
     lesioned_probs = output_layer(model.transformer[0].norm2(value_layer(lesioned_keys) + normed_after_attn)).softmax(dim=-1)[torch.arange(len(data)),data[:,-1]]
 
     plt.figure()
@@ -63,9 +66,11 @@ for i in interesting_keys:
     plt.xticks(np.arange(0,97,10))
     plt.yticks(np.arange(0,97,10))
     # plt.title(f"Lesioned key {i}")
-    plt.title(f"Lesioned key [219, 268, 446]")
+    # plt.title(f"Lesioned key [219, 268, 446]")
+    plt.show()
+    
     # plt.savefig(f"{model_name}/lesion_mlp_keys_{i}.jpg")
-    plt.savefig(f"{model_name}/lesion_mlp_keys_219_268_446.jpg")
+    # plt.savefig(f"{model_name}/lesion_mlp_keys_219_268_446.jpg")
     # break
     # plt.show()
     plt.close()

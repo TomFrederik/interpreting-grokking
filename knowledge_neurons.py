@@ -25,15 +25,17 @@ key_layer = model.transformer[0].linear_net[0]
 value_layer = model.transformer[0].linear_net[-1]
 output_layer = model.output
 
-num = 14
+num = 0
 idx = num * 97
 
 start_idx = idx
-all_idcs = [(0 + (7*97)*i + 7 * j) % (97**2) for i in range(14) for j in range(14)]
+all_idcs = [(0 + (98)*i) % (97**2) for i in range(97)]
 
 
 data = torch.from_numpy(ArithmeticData(data_dir='data', func_name="minus", prime=97).data).long().to(device)
 x = data[all_idcs,:-1]
+print(x)
+raise ValueError
 y = data[all_idcs,-1]
 context_len = x.shape[1]
 

@@ -51,7 +51,7 @@ class MultiheadAttention(nn.Module):
         # Separate Q, K, V from linear output
         qkv = einops.rearrange(qkv, 'batch seq_length (num_heads head_dim) -> batch num_heads seq_length head_dim', head_dim=3*self.head_dim)
         q, k, v = qkv.chunk(3, dim=-1)
-
+        
         # Determine value outputs
         values, attention = self._attn(q, k, v, mask=mask)
         values = einops.rearrange(values, 'batch num_heads seq_length head_dim -> batch seq_length (num_heads head_dim)')
@@ -201,7 +201,7 @@ class GrokkingTransformer(pl.LightningModule):
         # loss
         self.loss = nn.CrossEntropyLoss()
 
-    def forward(self, x):
+    def forward(self, x, output_attentions=True):
         if self.hparams.batch_first:
             context_len = x.shape[1]
         else:
@@ -289,4 +289,5 @@ class GrokkingTokenizer:
             return text
     
     
-        
+    def convert_tokens_to_string(self, token):
+        return str(token)

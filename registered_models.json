@@ -19,7 +19,7 @@
     },
     "Single Layer ReLU":{
         "constructor": "model.GrokkingTransformer",
-        "checkpoint": "/home/aric/Desktop/Projects/interpreting-grokking/interpreting_grokking/2p087iyb/checkpoints/epoch=1015-step=10159.ckpt",
+        "checkpoint": "/home/aric/Desktop/Projects/interpreting-grokking/interpreting_grokking/cxwx7rp5/checkpoints/epoch=1015-step=10159.ckpt",
         "tokenizer": "model.GrokkingTokenizer",
         "config": {
             "attn_name": "self_attn",

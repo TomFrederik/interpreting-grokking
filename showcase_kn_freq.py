@@ -17,21 +17,25 @@ def compute_mean_rankings():
     epochs = [int(f.split('.')[0]) for f in files_in_folder]
     attribution_rankings = {epoch: np.load(os.path.join(folder, f)) for f, epoch in zip(files_in_folder, epochs)}
     
-    for k in range(1, 21):
+    datas = []
+    for k in range(1, 16):
         # compute the frequency of each kn in the top 10 
         kn_freq = dict()
         for epoch, rankings in tqdm(attribution_rankings.items()):
             kn_freq[epoch] = [np.isin(rankings[:,:k], i, assume_unique=True).sum() / 97 for i in range(512)]
         
         # make into a dataframe
-        data = np.array([val for val in kn_freq.values()])
-        st.session_state['df'] = pd.DataFrame(data=data, columns=COL_NAMES)
-        st.session_state['epochs'] = list(kn_freq.keys())
+        datas.append(np.array([val for val in kn_freq.values()]))
+    
+    
+    st.session_state['df'] = [pd.DataFrame(data=data, columns=COL_NAMES) for data in datas]
+    st.session_state['epochs'] = list(kn_freq.keys())
 
 
 def generate_plots():
-    for k in range(1, 21):
-        fig = px.line(st.session_state.df, x=st.session_state.epochs, y=[COL_NAMES[x] for x in st.session_state.active_neurons], markers=True)
+    for k in range(1, 16):
+        fig = px.line(st.session_state.df[k-1], x=st.session_state.epochs, y=[COL_NAMES[x] for x in st.session_state.active_neurons], markers=True)
+        # fig = px.line(st.session_state.df, x=st.session_state.epochs, y=COL_NAMES, markers=True)
         fig.update_layout(title=f'Top-{k} Frequency', xaxis_title='Epoch', yaxis_title='Frequency')
         # for peak in peaks:
         #     plt.axvline(x=peak, color='r', linestyle='--', linewidth=1)
@@ -53,5 +57,5 @@ st.set_page_config(layout='wide')
 
 init_streamlit()
 
-st.slider('k', 1, 20, key='k', value=1)
+st.slider('k', 1, 15, key='k', value=1)
 st.plotly_chart(st.session_state['plots'][st.session_state['k']-1])

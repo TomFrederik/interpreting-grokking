@@ -41,6 +41,7 @@ def init_streamlit():
     if 'init' not in st.session_state:
         compute_mean_rankings()
         st.session_state['plots'] = []
+        st.session_state['active_neurons'] = RELEVANT #TODO
         generate_plots()
         st.session_state['init'] = True
 

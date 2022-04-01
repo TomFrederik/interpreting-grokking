@@ -33,6 +33,7 @@ def compute_mean_rankings():
 
 
 def generate_plots():
+    st.session_state['plots'] = []
     for k in range(1, 16):
         fig = px.line(st.session_state.df[k-1], x=st.session_state.epochs, y=[COL_NAMES[x] for x in st.session_state.active_neurons], markers=True)
         # fig = px.line(st.session_state.df, x=st.session_state.epochs, y=COL_NAMES, markers=True)
@@ -44,16 +45,29 @@ def generate_plots():
 def init_streamlit():
     if 'init' not in st.session_state:
         compute_mean_rankings()
-        st.session_state['plots'] = []
-        st.session_state['active_neurons'] = RELEVANT #TODO
-        generate_plots()
+        for i in COL_NAMES:
+            if i not in st.session_state:
+                st.session_state[i] = False
+        update_active_neurons()
         st.session_state['init'] = True
+    
+def update_active_neurons():
+    st.session_state['active_neurons'] = [int(i) for i in COL_NAMES if st.session_state[i]]
+    generate_plots()
 
 # set streamlit page layout to wide
 st.set_page_config(layout='wide')
 
 # obsolete?
 # peaks = [297, 309, 322, 334, 345, 358, 370, 384, 396, 414, 425, 449, 468, 487, 507, 524, 542, 563, 597, 640, 668, 704, 744, 788,]
+
+with st.sidebar:
+    
+    st.markdown("# Neurons")
+    
+    for neuron in RELEVANT:
+        st.checkbox(COL_NAMES[neuron], value=True, key=COL_NAMES[neuron], on_change=update_active_neurons)
+
 
 init_streamlit()
 

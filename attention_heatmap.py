@@ -26,7 +26,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 dataset = torch.from_numpy(get_dataset('minus', 97, './data').data).to(device)[:,:-1]
 
-first_num = False
+first_num = True
 
 for path in tqdm(paths[-1:]):
     epoch = int(path.split('/')[-1].split('-')[0].split('=')[-1])
@@ -52,7 +52,8 @@ for path in tqdm(paths[-1:]):
     fig, axes = plt.subplots(2, 2, sharex=True)
     for row in range(2):
         for col in range(2):
-            axes[row, col].imshow(dot_product[...,row*2+col,pos].detach().cpu().numpy(), origin='lower')
+            plot = axes[row, col].imshow(dot_product[...,row*2+col,pos].detach().cpu().numpy(), origin='lower', vmin=torch.min(dot_product[...,pos]), vmax=torch.max(dot_product[...,pos]))
+    fig.colorbar(plot, ax=axes)
     plt.suptitle(f"{title} - Epoch {epoch}")
     plt.savefig(f'{model_name}/attention_heatmaps/{folder}/epoch={epoch}.jpg')
     raise ValueError

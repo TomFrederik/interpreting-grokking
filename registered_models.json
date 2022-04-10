@@ -1,48 +1,4 @@
 {
-    "GELU_annealing":{
-        "constructor": "model.GrokkingTransformer",
-        "checkpoint": "/home/aric/Desktop/Projects/interpreting-grokking/interpreting_grokking/29ihm0gs/checkpoints/epoch=432-step=4329.ckpt",
-        "tokenizer": "model.GrokkingTokenizer"
-    },
-    "Single Layer GELU":{
-        "constructor": "model.GrokkingTransformer",
-        "checkpoint": "/home/aric/Desktop/Projects/interpreting-grokking/interpreting_grokking/1wdnlwq4/checkpoints/epoch=1107-step=11079.ckpt",
-        "tokenizer": "model.GrokkingTokenizer",
-        "config": {
-            "attn_name": "self_attn",
-            "output_idx": 1,
-            "layer_key_prefix": "transformer",
-            "out_proj_name":"o_proj",
-            "attn_suffix":"",
-            "unembedding_key":"output"
-        }
-    },
-    "Single Layer ReLU":{
-        "constructor": "model.GrokkingTransformer",
-        "checkpoint": "/home/aric/Desktop/Projects/interpreting-grokking/interpreting_grokking/cxwx7rp5/checkpoints/epoch=1015-step=10159.ckpt",
-        "tokenizer": "model.GrokkingTokenizer",
-        "config": {
-            "attn_name": "self_attn",
-            "output_idx": 1,
-            "layer_key_prefix": "transformer",
-            "out_proj_name":"o_proj",
-            "attn_suffix":"",
-            "unembedding_key":"output"
-        }
-    },
-    "Many Heads":{
-        "constructor": "model.GrokkingTransformer",
-        "checkpoint": "/home/aric/Desktop/Projects/interpreting-grokking/interpreting_grokking/ialdr46n/checkpoints/epoch=1090-step=10909.ckpt",
-        "tokenizer": "model.GrokkingTokenizer",
-        "config": {
-            "attn_name": "self_attn",
-            "output_idx": 1,
-            "layer_key_prefix": "transformer",
-            "out_proj_name":"o_proj",
-            "attn_suffix":"",
-            "unembedding_key":"output"
-        }
-    },
     "No Norm, 2 Layers":{
         "constructor": "model.GrokkingTransformer",
         "checkpoint": "/home/aric/Desktop/Projects/interpreting-grokking/interpreting_grokking/3lswlxgg/checkpoints/epoch=1090-step=10909.ckpt",
@@ -59,32 +15,6 @@
     "No Norm, Single Layer":{
         "constructor": "model.GrokkingTransformer",
         "checkpoint": "/home/aric/Desktop/Projects/interpreting-grokking/interpreting_grokking/2cgtqom8/checkpoints/epoch=1090-step=10909.ckpt",
-        "tokenizer": "model.GrokkingTokenizer",
-        "config": {
-            "attn_name": "self_attn",
-            "output_idx": 1,
-            "layer_key_prefix": "transformer",
-            "out_proj_name":"o_proj",
-            "attn_suffix":"",
-            "unembedding_key":"output"
-        }
-    },
-    "Small MLP":{
-        "constructor": "model.GrokkingTransformer",
-        "checkpoint": "/home/aric/Desktop/Projects/interpreting-grokking/interpreting_grokking/36jkt9sv/checkpoints/epoch=1046-step=10469.ckpt",
-        "tokenizer": "model.GrokkingTokenizer",
-        "config": {
-            "attn_name": "self_attn",
-            "output_idx": 1,
-            "layer_key_prefix": "transformer",
-            "out_proj_name":"o_proj",
-            "attn_suffix":"",
-            "unembedding_key":"output"
-        }
-    },
-    "Wide Model":{
-        "constructor": "model.GrokkingTransformer",
-        "checkpoint": "/home/aric/Desktop/Projects/interpreting-grokking/interpreting_grokking/crqpj95v/checkpoints/epoch=929-step=9299.ckpt",
         "tokenizer": "model.GrokkingTokenizer",
         "config": {
             "attn_name": "self_attn",

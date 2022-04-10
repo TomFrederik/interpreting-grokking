@@ -25,7 +25,6 @@ def lesion_head(head_idx: Union[int, List] = 3, head_dim=32):
         hook = Hook('transformer->0->self_attn', hook_fn, f'lesion_head_{head_idx}')
     else:
         raise TypeError
-    
     return hook
 
 model_name = "No Norm, Single Layer"

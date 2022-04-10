@@ -38,12 +38,12 @@ for path in tqdm(paths):
     qkv = einops.rearrange(qkv, 'batch seq_length (num_heads head_dim) -> batch num_heads seq_length head_dim', head_dim=3*model.transformer[0].self_attn.head_dim)
     q, k, v = qkv.chunk(3, dim=-1)
     equal_queries = q[:,:,-1]
-    num_keys = k[:,:,[0,1]]
     
     
-    dot_product = torch.einsum('bhn,bhtn->bht', equal_queries, num_keys)[[98*j for j in range(97)]]
-    dot_product -= torch.mean(dot_product, dim=0, keepdim=True)
+    dot_product = torch.einsum('bhn,bhtn->bht', equal_queries, k)[[98*j for j in range(97)]]
+    dot_product -= torch.mean(dot_product, dim=-1, keepdim=True)
     dot_product /= 128**0.5
+    dot_product = dot_product[...,[0,1]]
     num_heads = dot_product.shape[1]
     fig, axes = plt.subplots(num_heads, 1, sharex=True)
     for i in range(num_heads):

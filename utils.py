@@ -1,6 +1,6 @@
 import json
 
-def load_model(model_name='Single Layer GELU'):
+def load_model(model_name='No Norm, Single Layer'):
     with open("registered_models.json", "r") as f:
         data = json.load(f)
         ckpt = data[model_name]['checkpoint']

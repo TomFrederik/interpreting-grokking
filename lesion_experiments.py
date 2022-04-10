@@ -28,7 +28,7 @@ def lesion_head(head_idx: Union[int, List] = 3, head_dim=32):
     
     return hook
 
-model_name = "Single Layer ReLU"
+model_name = "No Norm, Single Layer"
 ckpt, ckpt_dir = load_model(model_name)
 model = GrokkingTransformer.load_from_checkpoint(ckpt).cuda()
 model = HookedModel(model)
@@ -40,7 +40,7 @@ y_hat = model(data[:,:-1], [])
 probs = torch.softmax(y_hat, dim=1)
 probs = probs[torch.arange(len(data)), -1, y]
 
-reverse_lesion = True
+reverse_lesion = False
 
 for i in range(4):
     if reverse_lesion:
@@ -57,7 +57,6 @@ for i in range(4):
     plt.yticks(np.arange(0,97,8))
     plt.colorbar()
     plt.title(f'Head {i}')
-    plt.show()
     if reverse_lesion:
         plt.savefig(f'{model_name}/reverse_lesion_head_{i}.jpg')
     else:

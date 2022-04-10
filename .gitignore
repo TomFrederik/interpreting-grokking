@@ -1,10 +1,9 @@
-*.png
 lightning_logs/
 wandb/
 grokking-transformer/
 interpreting_grokking/
-dot_embedding_plots/
-eq_query_plots/
-*.jpg
-
+data/
+No Norm, Single Layer/
+Single Layer ReLU/
+umap_embeddings/
 *.pt

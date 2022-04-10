@@ -65,7 +65,7 @@ class MultiheadAttention(nn.Module):
     
 class EncoderBlock(nn.Module):
 
-    def __init__(self, input_dim, num_heads, dim_feedforward, dropout=0.0, activation='gelu'):
+    def __init__(self, input_dim, num_heads, dim_feedforward, dropout=0.0, activation='gelu', no_norm=False):
         """
         Inputs:
             input_dim - Dimensionality of the input
@@ -87,8 +87,13 @@ class EncoderBlock(nn.Module):
         )
 
         # Layers to apply in between the main layers
-        self.norm1 = nn.LayerNorm(input_dim)
-        self.norm2 = nn.LayerNorm(input_dim)
+        if no_norm:
+            self.norm1 = nn.Identity()
+            self.norm2 = nn.Identity()
+        else:
+            self.norm1 = nn.LayerNorm(input_dim)
+            self.norm2 = nn.LayerNorm(input_dim)
+            
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x, mask=None):
@@ -145,9 +150,9 @@ class GrokkingTransformer(pl.LightningModule):
         dropout=0,
         batch_first=True,
         optim_kwargs=None, 
-        checkpoints=None,
         activation='gelu',
         dim_feedforward=None,
+        no_norm=False,
     ):
         
         super().__init__()
@@ -169,11 +174,6 @@ class GrokkingTransformer(pl.LightningModule):
             }
         else:
             self.optim_kwargs = optim_kwargs
-        # set checkpoints
-        if checkpoints is None:
-            self.checkpoints = []
-        else:
-            self.checkpoints = checkpoints
 
         # input layer
         self.embedding = nn.Embedding(num_tokens, width)
@@ -189,6 +189,7 @@ class GrokkingTransformer(pl.LightningModule):
                 num_heads=heads, 
                 dropout=dropout,
                 activation=activation,
+                no_norm=no_norm,
             ) for _ in range(layers)
         ])
 
@@ -258,13 +259,6 @@ class GrokkingTransformer(pl.LightningModule):
                 'interval': 'step'
                 }
         }
-
-    def on_train_batch_end(self, outputs, batch, batch_idx):
-        # save model if global step is in checkpoint list
-        if self.global_step in self.checkpoints:
-            logging.info(f'Saving model after {self.global_step} steps')
-            self.trainer.save_checkpoint(os.path.join(f'{wandb.run.dir}', f'{self.global_step}.ckpt'))
-
 
 class GrokkingTokenizer:
     def __init__(self):

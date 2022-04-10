@@ -40,11 +40,11 @@ def compose_perms(perm1, perm2):
     perm2 = np.array(perm2)
     return tuple(perm1[perm2])
 
-def get_dataset(descr, num_elements, data_dir=None, force_data=False):
+def get_dataset(descr, num_elements, data_dir=None, force_data=False, no_op_token=False):
     if not descr.startswith('perm'):
-        return ArithmeticData(data_dir, force_data, num_elements, descr)
+        return ArithmeticData(data_dir, force_data, num_elements, descr, no_op_token)
     else:
-        return PermData(data_dir, force_data, num_elements, descr)
+        return PermData(data_dir, force_data, num_elements, descr, no_op_token)
 
 def get_arithmetic_func(func_name):
     return {
@@ -65,13 +65,13 @@ def get_arithmetic_func(func_name):
 ###
 
 class ArithmeticData(torch.utils.data.Dataset):
-    def __init__(self, data_dir=None, force_data=False, prime=97, func_name="plus"):
+    def __init__(self, data_dir=None, force_data=False, prime=97, func_name="plus", no_op_token=False):
         assert data_dir is not None, "data_dir is None"
         assert isPrime(prime), "prime is not prime"
 
         if force_data:
             logging.info(f"Creating data and saving to {data_dir}")
-            self.generate_data(data_dir, func_name, prime)
+            self.generate_data(data_dir, func_name, prime, no_op_token)
         logging.info(f"Loading data from {data_dir}")
 
         try:
@@ -87,11 +87,9 @@ class ArithmeticData(torch.utils.data.Dataset):
         return len(self.data)
     
     @staticmethod
-    def generate_data(data_dir, func_name, prime=97):
+    def generate_data(data_dir, func_name, prime=97, no_op_token=False):
         data = []
         func = get_arithmetic_func(func_name)
-        op = prime
-        eq = prime + 1
         
         if func_name == 'div': # avoid dividing by zero
             y_range = range(1, prime)
@@ -99,7 +97,10 @@ class ArithmeticData(torch.utils.data.Dataset):
             y_range = range(prime)
         for x, y in product(range(prime), y_range):
             x, y, res = func(x, y, prime)
-            data.append([x, op, y, eq, res])
+            if no_op_token:
+                data.append([x, y, prime, res])
+            else:
+                data.append([x, prime, y, prime+1, res])
         
         # save data
         np.save(os.path.join(data_dir, f'{func_name}_{prime}.npy'), data)

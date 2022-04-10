@@ -12,9 +12,12 @@ from datasets import get_dataset
 from model import GrokkingTransformer
 from utils import load_model
 
-model_name = "Single Layer ReLU"
+model_name = "No Norm, Single Layer"
+# model_name = "Many Heads"
 _, ckpt_dir = load_model(model_name)
-paths = [ckpt_dir + f"/epoch={epoch}-step={epoch*10+9}.ckpt" for epoch in range(0,1071,5)]
+paths = [ckpt_dir + f"/epoch={epoch}-step={epoch*10+9}.ckpt" for epoch in range(0, 2000, 5) if os.path.exists(ckpt_dir + f"/epoch={epoch}-step={epoch*10+9}.ckpt")]
+# get epochs from path
+epochs = [int(path.split('/')[-1].split('-')[0].split('=')[-1]) for path in paths]
 
 os.makedirs(f'{model_name}/eq_query_plots', exist_ok=True)
 
@@ -26,6 +29,7 @@ for path in tqdm(paths):
     epoch = int(path.split('/')[-1].split('-')[0].split('=')[-1])
     # if os.path.exists(f"{model_name}/eq_query_plots/epoch={epoch}.jpg"):
     #     continue
+    
     model = GrokkingTransformer.load_from_checkpoint(path).to(device)
     model.eval()
     
@@ -34,14 +38,18 @@ for path in tqdm(paths):
     qkv = einops.rearrange(qkv, 'batch seq_length (num_heads head_dim) -> batch num_heads seq_length head_dim', head_dim=3*model.transformer[0].self_attn.head_dim)
     q, k, v = qkv.chunk(3, dim=-1)
     equal_queries = q[:,:,-1]
-    num_keys = k[:,:,[0,2]]
+    num_keys = k[:,:,[0,1]]
     
     
-    dot_product = torch.einsum('bhn,bhtn->bht', equal_queries, num_keys)
-    fig, axes = plt.subplots(4, 1, sharex=True)
-    for i in range(4):
+    dot_product = torch.einsum('bhn,bhtn->bht', equal_queries, num_keys)[[98*j for j in range(97)]]
+    dot_product -= torch.mean(dot_product, dim=0, keepdim=True)
+    dot_product /= 128**0.5
+    num_heads = dot_product.shape[1]
+    fig, axes = plt.subplots(num_heads, 1, sharex=True)
+    for i in range(num_heads):
         
-        axes[i].plot(np.arange(97), dot_product[[98*j for j in range(97)],i].detach().cpu().numpy(), label=["First Num", "Second Num"])
+        axes[i].plot(np.arange(97), dot_product[:,i].detach().cpu().numpy(), label=["First Num", "Second Num"])
+        # axes[i].plot(np.arange(97), (dot_product[:,i,0] - dot_product[:,i,1]).detach().cpu().numpy())
         axes[i].set_xticks(np.arange(0,97,8))
     axes[0].legend(bbox_to_anchor=(0.7, 1.05))
     plt.suptitle(f"Epoch {epoch}")
@@ -50,7 +58,7 @@ for path in tqdm(paths):
 
 images = []
 fig = plt.figure()
-for i in range(0,1071,5):
+for i in epochs:
     image = mgimg.imread(f"{model_name}/eq_query_plots/epoch={i}.jpg")
     images.append([plt.imshow(image)])
 plt.axis('off')

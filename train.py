@@ -31,20 +31,22 @@ def main(
     activation,
     dim_feedforward,
     dropout,
+    no_norm,
     data_name,
     num_elements,
     data_dir,
     force_data,
+    no_op_token,
     batch_size,
     steps,
+    epochs,
     train_ratio,
     seed,
     verbose,
     log_freq,
     num_workers,
     disable_logging,
-    checkpoints,
-    checkpoint_layers,
+    save_every,
 ):
     # set wandb logging mode
     if disable_logging:
@@ -61,7 +63,7 @@ def main(
         pl.seed_everything(seed)
 
     # data
-    data = get_dataset(descr=data_name, num_elements=num_elements, data_dir=data_dir, force_data=force_data)
+    data = get_dataset(descr=data_name, num_elements=num_elements, data_dir=data_dir, force_data=force_data, no_op_token=no_op_token)
     idcs = np.random.permutation(np.arange(len(data)))
     train_idcs = idcs[:int(train_ratio * len(idcs))]
     val_idcs = idcs[int(train_ratio * len(idcs)):]
@@ -84,17 +86,24 @@ def main(
         'betas': (beta1, beta2),
     }
     num_tokens = factorial(num_elements) + 2 if data_name.startswith('perm') else num_elements + 2
+    max_seq_len = 5
+    if no_op_token:
+        num_tokens -= 1
+        max_seq_len -= 1
+        print(f"{num_tokens = }")
+    
     model_kwargs = {
         'heads':heads,
         'layers':layers,
         'width':width,
+        'max_seq_len':max_seq_len,
         'num_tokens':num_tokens,
         'optim_kwargs':optim_kwargs,
-        'checkpoints':checkpoints,
         'dropout':dropout,
         'batch_first':not seq_first,
         'activation':activation,
         'dim_feedforward':dim_feedforward,
+        'no_norm':no_norm,
     }
     model = GrokkingTransformer(**model_kwargs)
 
@@ -107,6 +116,7 @@ def main(
         data_name=data_name, 
         num_elements=num_elements,
         seed=seed,
+        no_op_token=no_op_token,
     )
 
     if wandb is None:
@@ -119,14 +129,8 @@ def main(
             verbose=verbose,
             monitor="Validation/Accuracy",
             auto_insert_metric_name=True,
-            every_n_epochs=1,
+            every_n_epochs=save_every,
             save_top_k=-1,
-        )
-    )
-    callbacks.append(
-        LogWeightsCallback(
-            checkpoints=checkpoints,
-            layers=checkpoint_layers,
         )
     )
     callbacks.append(pl.callbacks.progress.TQDMProgressBar(refresh_rate=log_freq))
@@ -136,6 +140,7 @@ def main(
     trainer = pl.Trainer(
         gpus=torch.cuda.device_count(),
         max_steps=steps,
+        max_epochs=epochs,
         log_every_n_steps=log_freq,
         callbacks=callbacks,
         logger=WandbLogger(project="interpreting_grokking", config=config),
@@ -164,6 +169,7 @@ if __name__ == '__main__':
     parser.add_argument("--seq_first", action="store_true", help="Whether to have time dim first or batch dim first")
     parser.add_argument("--activation", type=str, default="relu")
     parser.add_argument("--dim_feedforward", type=int, default=None, help='defaults to 4*width')
+    parser.add_argument("--no_norm", action='store_true', help='Disables layer norm')
     
 
     # data args
@@ -187,18 +193,19 @@ if __name__ == '__main__':
     parser.add_argument("--num_elements", type=int, default=97) # choose 5 for permutation data, 97 for arithmetic data
     parser.add_argument("--data_dir", type=str, default="./data")
     parser.add_argument("--force_data", action="store_true", help="Whether to force dataset creation.")
+    parser.add_argument("--no_op_token", action="store_true", help="Whether to add an op token between the number tokens.")
     
     # training args
     parser.add_argument("--batch_size", type=int, default=512)
     parser.add_argument("--steps", type=int, default=10**5)
+    parser.add_argument("--epochs", type=int, default=1100)
     parser.add_argument("--train_ratio", type=float, default=0.5)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--log_freq", type=int, default=10)
     parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--disable_logging", action="store_true")
-    parser.add_argument("--checkpoints", type=int, default=None, nargs="*", help="List of number of steps after which to save model.")
-    parser.add_argument("--checkpoint_layers", type=str, default=None, nargs="*", help="List of layers whose weights should be saved.")
+    parser.add_argument("--save_every", type=int, default=1)
     
     # collect args and run main
     args = parser.parse_args()

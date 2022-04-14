@@ -25,6 +25,8 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 dataset = torch.from_numpy(get_dataset('minus', 97, './data').data).to(device)[:,:-1]
 
+exponent = True
+
 for path in tqdm(paths):
     epoch = int(path.split('/')[-1].split('-')[0].split('=')[-1])
     # if os.path.exists(f"{model_name}/eq_query_plots/epoch={epoch}.jpg"):
@@ -44,6 +46,10 @@ for path in tqdm(paths):
     dot_product -= torch.mean(dot_product, dim=-1, keepdim=True)
     dot_product /= 128**0.5
     dot_product = dot_product[...,[0,1]]
+    
+    if exponent:
+        dot_product = torch.exp(dot_product)
+    
     num_heads = dot_product.shape[1]
     fig, axes = plt.subplots(num_heads, 1, sharex=True)
     for i in range(num_heads):

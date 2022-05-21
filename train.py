@@ -1,19 +1,17 @@
 import argparse
 import logging
-from math import factorial
 import os
+from math import factorial
 
 import numpy as np
-import torch
-from torch.utils.data import DataLoader, Subset
 import pytorch_lightning as pl
+import torch
 from pytorch_lightning.loggers import WandbLogger
+from torch.utils.data import DataLoader, Subset
+
 import wandb
-
-from callbacks import LogWeightsCallback
-from model import GrokkingTransformer
 from datasets import get_dataset
-
+from model import GrokkingTransformer
 
 
 def main(
@@ -32,6 +30,7 @@ def main(
     dim_feedforward,
     dropout,
     no_norm,
+    tied_embeddings,
     data_name,
     num_elements,
     data_dir,
@@ -47,6 +46,7 @@ def main(
     num_workers,
     disable_logging,
     save_every,
+    attention_only,
 ):
     # set wandb logging mode
     if disable_logging:
@@ -104,6 +104,8 @@ def main(
         'activation':activation,
         'dim_feedforward':dim_feedforward,
         'no_norm':no_norm,
+        'tied_embeddings':tied_embeddings,
+        'attention_only':attention_only,
     }
     model = GrokkingTransformer(**model_kwargs)
 
@@ -170,6 +172,8 @@ if __name__ == '__main__':
     parser.add_argument("--activation", type=str, default="relu")
     parser.add_argument("--dim_feedforward", type=int, default=None, help='defaults to 4*width')
     parser.add_argument("--no_norm", action='store_true', help='Disables layer norm')
+    parser.add_argument("--tied_embeddings", action='store_true', help='Whether to reuse embedding weights as unembedding')
+    parser.add_argument("--attention_only", action='store_true', help='Whether to use attention-only trafo')
     
 
     # data args
@@ -192,7 +196,7 @@ if __name__ == '__main__':
     ])
     parser.add_argument("--num_elements", type=int, default=97) # choose 5 for permutation data, 97 for arithmetic data
     parser.add_argument("--data_dir", type=str, default="./data")
-    parser.add_argument("--force_data", action="store_true", help="Whether to force dataset creation.")
+    parser.add_argument("--force_data", action="store_true", help="Whether to force dataset creation. Do this if you want to make sure that you are loading data with correct settings.")
     parser.add_argument("--no_op_token", action="store_true", help="Whether to add an op token between the number tokens.")
     
     # training args

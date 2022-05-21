@@ -24,5 +24,57 @@
             "attn_suffix":"",
             "unembedding_key":"output"
         }
+    },
+    "Tied Embeddings":{
+        "constructor": "model.GrokkingTransformer",
+        "checkpoint": "/home/aric/Desktop/Projects/interpreting-grokking/interpreting_grokking/3jfraavc/checkpoints/epoch=1090-step=10909.ckpt",
+        "tokenizer": "model.GrokkingTokenizer",
+        "config": {
+            "attn_name": "self_attn",
+            "output_idx": 1,
+            "layer_key_prefix": "transformer",
+            "out_proj_name":"o_proj",
+            "attn_suffix":"",
+            "unembedding_key":"output"
+        }
+    },
+    "Tied Embeddings, Addition":{
+        "constructor": "model.GrokkingTransformer",
+        "checkpoint": "/home/aric/Desktop/Projects/interpreting-grokking/interpreting_grokking/6tdamyij/checkpoints/epoch=200-step=2009.ckpt",
+        "tokenizer": "model.GrokkingTokenizer",
+        "config": {
+            "attn_name": "self_attn",
+            "output_idx": 1,
+            "layer_key_prefix": "transformer",
+            "out_proj_name":"o_proj",
+            "attn_suffix":"",
+            "unembedding_key":"output"
+        }
+    },
+    "Test":{
+        "constructor": "model.GrokkingTransformer",
+        "checkpoint": "/home/aric/Desktop/Projects/interpreting-grokking/interpreting_grokking/4ymxebdk/checkpoints/epoch=860-step=8609.ckpt",
+        "tokenizer": "model.GrokkingTokenizer",
+        "config": {
+            "attn_name": "self_attn",
+            "output_idx": 1,
+            "layer_key_prefix": "transformer",
+            "out_proj_name":"o_proj",
+            "attn_suffix":"",
+            "unembedding_key":"output"
+        }
+    },
+    "Attention Only":{
+        "constructor": "model.GrokkingTransformer",
+        "checkpoint": "/home/aric/Desktop/Projects/interpreting-grokking/interpreting_grokking/m1mnhtil/checkpoints/epoch=1090-step=10909.ckpt",
+        "tokenizer": "model.GrokkingTokenizer",
+        "config": {
+            "attn_name": "self_attn",
+            "output_idx": 1,
+            "layer_key_prefix": "transformer",
+            "out_proj_name":"o_proj",
+            "attn_suffix":"",
+            "unembedding_key":"output"
+        }
     }
 }

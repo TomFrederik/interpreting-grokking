@@ -12,10 +12,9 @@ from datasets import get_dataset
 from model import GrokkingTransformer
 from utils import load_model
 
-model_name = "No Norm, Single Layer"
-# model_name = "Many Heads"
+model_name = "Attention Only"
 _, ckpt_dir = load_model(model_name)
-paths = [ckpt_dir + f"/epoch={epoch}-step={epoch*10+9}.ckpt" for epoch in range(0, 2000, 5) if os.path.exists(ckpt_dir + f"/epoch={epoch}-step={epoch*10+9}.ckpt")]
+paths = [os.path.join(ckpt_dir, file) for file in os.listdir(ckpt_dir) if (os.path.isfile(os.path.join(ckpt_dir, file)) and file.endswith(".ckpt"))]
 # get epochs from path
 epochs = [int(path.split('/')[-1].split('-')[0].split('=')[-1]) for path in paths]
 
@@ -23,15 +22,14 @@ os.makedirs(f'{model_name}/eq_query_plots', exist_ok=True)
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-dataset = torch.from_numpy(get_dataset('minus', 97, './data').data).to(device)[:,:-1]
+dataset = torch.from_numpy(get_dataset('minus', 97, './data', no_op_token=True, force_data=True).data).to(device)[:,:-1]
 
 exponent = True
 
-for path in tqdm(paths):
+for i, path in enumerate(tqdm(paths)):
     epoch = int(path.split('/')[-1].split('-')[0].split('=')[-1])
-    # if os.path.exists(f"{model_name}/eq_query_plots/epoch={epoch}.jpg"):
-    #     continue
-    
+    if epoch % 5 != 0:
+        continue
     model = GrokkingTransformer.load_from_checkpoint(path).to(device)
     model.eval()
     
@@ -59,14 +57,18 @@ for path in tqdm(paths):
         axes[i].set_xticks(np.arange(0,97,8))
     axes[0].legend(bbox_to_anchor=(0.7, 1.05))
     plt.suptitle(f"Epoch {epoch}")
+    # ##########
+    # plt.show()
+    # raise ValueError
+    # ##########
     plt.savefig(f'{model_name}/eq_query_plots/epoch={epoch}.jpg')
     plt.close()
 
-images = []
-fig = plt.figure()
-for i in epochs:
-    image = mgimg.imread(f"{model_name}/eq_query_plots/epoch={i}.jpg")
-    images.append([plt.imshow(image)])
-plt.axis('off')
-my_anim = animation.ArtistAnimation(fig, images, interval=20, repeat_delay=2000)
-my_anim.save(f'{model_name}/eq_query_animation.gif', fps=10)
+# images = []
+# fig = plt.figure()
+# for i in epochs:
+#     image = mgimg.imread(f"{model_name}/eq_query_plots/epoch={i}.jpg")
+#     images.append([plt.imshow(image)])
+# plt.axis('off')
+# my_anim = animation.ArtistAnimation(fig, images, interval=20, repeat_delay=2000)
+# my_anim.save(f'{model_name}/eq_query_animation.gif', fps=10)

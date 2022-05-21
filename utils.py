@@ -6,3 +6,6 @@ def load_model(model_name='No Norm, Single Layer'):
         ckpt = data[model_name]['checkpoint']
         ckpt_dir = '/'.join(ckpt.split('/')[:-1])
         return ckpt, ckpt_dir
+
+def get_epoch(ckpt):
+    return int(ckpt.split('=')[1].split('-')[0])

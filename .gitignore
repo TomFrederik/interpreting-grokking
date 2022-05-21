@@ -5,5 +5,9 @@ interpreting_grokking/
 data/
 No Norm, Single Layer/
 Single Layer ReLU/
+Attention Only/
+Tied Embeddings/
+Tied Embeddings, Addition/
+Test/
 umap_embeddings/
 *.pt

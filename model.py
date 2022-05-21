@@ -10,15 +10,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 import wandb
 
-def scaled_dot_product(q, k, v, mask=None):
-    d_k = q.size()[-1]
-    attn_logits = q @ einops.rearrange(k, '... seq_length embed_dim -> ... embed_dim seq_length')
-    attn_logits = attn_logits / math.sqrt(d_k)
-    if mask is not None:
-        attn_logits = attn_logits.masked_fill(mask == 0, -9e15)
-    attention = F.softmax(attn_logits, dim=-1)
-    values = attention @ v
-    return values, attention
+class AttentionHelper(nn.Module):
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self, q, k, mask=None):
+        d_k = q.size()[-1]
+        attn_logits = q @ einops.rearrange(k, '... seq_length embed_dim -> ... embed_dim seq_length')
+        attn_logits = attn_logits / math.sqrt(d_k)
+        if mask is not None:
+            attn_logits = attn_logits.masked_fill(mask == 0, -9e15)
+        attention = F.softmax(attn_logits, dim=-1)
+        return attention
 
 class MultiheadAttention(nn.Module):
 
@@ -34,6 +37,7 @@ class MultiheadAttention(nn.Module):
         # Note that in many implementations you see "bias=False" which is optional
         self.qkv_proj = nn.Linear(input_dim, 3*embed_dim, bias=False)
         self.o_proj = nn.Linear(embed_dim, embed_dim, bias=False)
+        self.attn = AttentionHelper()
 
         self._reset_parameters()
 
@@ -41,9 +45,7 @@ class MultiheadAttention(nn.Module):
         # Original Transformer initialization, see PyTorch documentation
         nn.init.xavier_uniform_(self.qkv_proj.weight)
         nn.init.xavier_uniform_(self.o_proj.weight)
-    
-    def _attn(self, q, k, v, mask):
-        return scaled_dot_product(q, k, v, mask=mask)
+        return 
 
     def forward(self, x, mask=None, return_attention=False):
         qkv = self.qkv_proj(x)
@@ -53,7 +55,8 @@ class MultiheadAttention(nn.Module):
         q, k, v = qkv.chunk(3, dim=-1)
         
         # Determine value outputs
-        values, attention = self._attn(q, k, v, mask=mask)
+        attention = self.attn(q, k, mask=mask)
+        values = attention @ v
         values = einops.rearrange(values, 'batch num_heads seq_length head_dim -> batch seq_length (num_heads head_dim)')
         o = self.o_proj(values)
 
@@ -65,7 +68,7 @@ class MultiheadAttention(nn.Module):
     
 class EncoderBlock(nn.Module):
 
-    def __init__(self, input_dim, num_heads, dim_feedforward, dropout=0.0, activation='gelu', no_norm=False):
+    def __init__(self, input_dim, num_heads, dim_feedforward, dropout=0.0, activation='relu', no_norm=False, attention_only=False):
         """
         Inputs:
             input_dim - Dimensionality of the input
@@ -79,12 +82,17 @@ class EncoderBlock(nn.Module):
         self.self_attn = MultiheadAttention(input_dim, input_dim, num_heads)
 
         # Two-layer MLP
-        self.linear_net = nn.Sequential(
-            nn.Linear(input_dim, dim_feedforward),
-            nn.Dropout(dropout),
-            {'gelu':nn.GELU, 'relu':nn.ReLU}[activation](),
-            nn.Linear(dim_feedforward, input_dim)
-        )
+        if attention_only:
+            self.linear_net = nn.Identity()
+            self.dropout2 = nn.Identity()
+        else:
+            self.linear_net = nn.Sequential(
+                nn.Linear(input_dim, dim_feedforward),
+                nn.Dropout(dropout),
+                {'gelu':nn.GELU, 'relu':nn.ReLU}[activation](),
+                nn.Linear(dim_feedforward, input_dim)
+            )
+            self.dropout2 = nn.Dropout(dropout)
 
         # Layers to apply in between the main layers
         if no_norm:
@@ -94,17 +102,17 @@ class EncoderBlock(nn.Module):
             self.norm1 = nn.LayerNorm(input_dim)
             self.norm2 = nn.LayerNorm(input_dim)
             
-        self.dropout = nn.Dropout(dropout)
+        self.dropout1 = nn.Dropout(dropout)
 
     def forward(self, x, mask=None):
         # Attention part
         attn_out, _ = self.self_attn(x, mask=mask, return_attention=True)
-        x = x + self.dropout(attn_out)
+        x = x + self.dropout1(attn_out)
         x = self.norm1(x)
 
         # MLP part
         linear_out = self.linear_net(x)
-        x = x + self.dropout(linear_out)
+        x = x + self.dropout2(linear_out)
         x = self.norm2(x)
 
         return x
@@ -150,9 +158,11 @@ class GrokkingTransformer(pl.LightningModule):
         dropout=0,
         batch_first=True,
         optim_kwargs=None, 
-        activation='gelu',
+        activation='relu',
         dim_feedforward=None,
         no_norm=False,
+        tied_embeddings=False,
+        attention_only=False,
     ):
         
         super().__init__()
@@ -190,11 +200,15 @@ class GrokkingTransformer(pl.LightningModule):
                 dropout=dropout,
                 activation=activation,
                 no_norm=no_norm,
+                attention_only=attention_only,
             ) for _ in range(layers)
         ])
 
         # output layer
-        self.output = nn.Linear(width, num_tokens, bias=False)
+        if tied_embeddings:
+            self.output = TransposedLinear(self.embedding)
+        else:
+            self.output = nn.Linear(width, num_tokens, bias=False)
         
         # causal masking        
         self.register_buffer("self_attn_mask", torch.ones([max_seq_len, max_seq_len], device=self.device).tril())
@@ -248,9 +262,7 @@ class GrokkingTransformer(pl.LightningModule):
             else:
                 return self.hparams.optim_kwargs['min_lr'] / self.hparams.optim_kwargs['max_lr']
                 
-        # cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, eta_min=1e-5, T_max=15000)
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lambda x: scheduler(x))
-        # self.scheduler = cosine_scheduler
         return {
             'optimizer': self.optimizer, 
             'lr_scheduler': {
@@ -260,6 +272,19 @@ class GrokkingTransformer(pl.LightningModule):
                 }
         }
 
+class TransposedLinear(nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+    def forward(self, x):
+        return x @ self.model.weight.T
+
+    @property
+    def weight(self):
+        return self.model.weight
+        
+        
 class GrokkingTokenizer:
     def __init__(self):
         pass

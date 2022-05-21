@@ -1,6 +1,7 @@
 import itertools
 import math
-from typing import Tuple
+import os
+from typing import Optional, Tuple
 
 import einops
 import matplotlib.pyplot as plt
@@ -11,6 +12,7 @@ from tqdm import tqdm
 
 from model import GrokkingTransformer, MultiheadAttention
 from utils import load_model
+
 
 def get_qkv_weights(attention_module: MultiheadAttention) -> Tuple[Tensor, Tensor, Tensor]:
     qkv = einops.rearrange(attention_module.qkv_proj.weight, '(num_heads head_dim) out_dim -> num_heads head_dim out_dim', head_dim=3*attention_module.head_dim)
@@ -49,40 +51,61 @@ def get_init_limits(weight: Tensor) -> float:
     # compute xavier uniform initialization limits
     return (-math.sqrt(6/(weight.shape[0] + weight.shape[1])), math.sqrt(6/(weight.shape[0] + weight.shape[1])))
 
-def approx_baseline(shape_1, shape_2, limits_1, limits_2, num_samples):
-    baseline = 0
+def sample_single_matrix(lo, hi, shape):
+    return torch.distributions.Uniform(lo, hi).rsample(shape)
+
+def sample_composed_matrix(shape_1, limits_1, shape_2, limits_2):
+    mat_1 = sample_single_matrix(limits_1[0], limits_1[1], shape_1)
+    mat_2 = sample_single_matrix(limits_2[0], limits_2[1], shape_2)
+    return mat_1.T @ mat_2    
+
+def sample_qk_matrix(shape, limits):
+    return sample_composed_matrix(shape, limits, shape, limits)
+
+def sample_ov_matrix(shape, o_limits, v_limits):
+    return sample_composed_matrix(shape, o_limits, shape, v_limits)
+
+def compute_v_comp_baseline(shape, qkv_limits, o_limits, num_samples):
+    cur = 0
     for i in range(num_samples):
-        mat_1 = torch.distributions.Uniform(limits_1[0], limits_1[1]).rsample(shape_1)
-        mat_2 = torch.distributions.Uniform(limits_2[0], limits_2[1]).rsample(shape_2)
-        
-        baseline += composition(mat_1, mat_2)
-    
-    return baseline / num_samples
+        mat_1 = sample_ov_matrix(shape, o_limits, qkv_limits)
+        mat_2 = sample_ov_matrix(shape, o_limits, qkv_limits)
+        cur += v_composition(mat_1, mat_2)
+    return cur.item() / num_samples
+
+def compute_q_comp_baseline(shape, qkv_limits, o_limits, num_samples):
+    cur = 0
+    for i in range(num_samples):
+        qk_mat = sample_qk_matrix(shape, qkv_limits)
+        ov_mat = sample_ov_matrix(shape, o_limits, qkv_limits)
+        cur += q_composition(qk_mat, ov_mat)
+    return cur.item() / num_samples
+
+def compute_k_comp_baseline(shape, qkv_limits, o_limits, num_samples):
+    cur = 0
+    for i in range(num_samples):
+        qk_mat = sample_qk_matrix(shape, qkv_limits)
+        ov_mat = sample_ov_matrix(shape, o_limits, qkv_limits)
+        cur += k_composition(qk_mat, ov_mat)
+    return cur.item() / num_samples
 
 def compute_all_baselines(attention_module: MultiheadAttention, num_samples):
     q, k, v = get_qkv_weights(attention_module)
     o = get_o_weight(attention_module)
-    # print(f"q: {q.shape}")
-    # print(f"k: {k.shape}")
-    # print(f"v: {v.shape}")
-    # print(f"o: {o.shape}")
-    qk_shape = (q.shape[1],) + (k.shape[1],)
-    ov_shape = (o.shape[1],) + (v.shape[1],)
-    # print(f"{qk_shape = }")
-    # print(f"{ov_shape = }")
-    qk_limits = get_init_limits(attention_module.qkv_proj.weight)
-    ov_limits = get_init_limits(o)
     
-    qk_baseline = approx_baseline(qk_shape, ov_shape, qk_limits, ov_limits, num_samples)
-    v_baseline = approx_baseline(ov_shape, ov_shape, ov_limits, ov_limits, num_samples)
-        
-    return qk_baseline, v_baseline
+    qkv_shape = q.shape[1:]
+    
+    qkv_limits = get_init_limits(attention_module.qkv_proj.weight)
+    o_limits = get_init_limits(o)
+    
+    q_comp_baseline = compute_q_comp_baseline(qkv_shape, qkv_limits, o_limits, num_samples)
+    k_comp_baseline = compute_k_comp_baseline(qkv_shape, qkv_limits, o_limits, num_samples)
+    v_comp_baseline = compute_v_comp_baseline(qkv_shape, qkv_limits, o_limits, num_samples)
+    
+    return q_comp_baseline, k_comp_baseline, v_comp_baseline
 
 @torch.no_grad()
-def compute_all_compositions(attn_1: MultiheadAttention, attn_2: MultiheadAttention, num_samples: int = 1000):
-    qk_baseline, v_baseline = compute_all_baselines(attn_2, num_samples)
-    # print(f"{qk_baseline = }")
-    # print(f"{v_baseline = }")
+def compute_all_compositions(attn_1: MultiheadAttention, attn_2: MultiheadAttention, baselines: Optional[Tuple[float, float, float]] = None):
     
     q_1, k_1, v_1 = get_qkv_weights(attn_1)
     # print(f"v_1: {v_1.shape}")
@@ -108,33 +131,35 @@ def compute_all_compositions(attn_1: MultiheadAttention, attn_2: MultiheadAttent
         k_comps.append(k_composition(qk_2[head_2], ov_1[head_1]))
         v_comps.append(v_composition(ov_2[head_2], ov_1[head_1]))
     
-    # q_comps = torch.stack(q_comps) - qk_baseline
-    # k_comps = torch.stack(k_comps) - qk_baseline
-    # v_comps = torch.stack(v_comps) - v_baseline
-    
-    q_comps = torch.stack(q_comps)
-    k_comps = torch.stack(k_comps)
-    v_comps = torch.stack(v_comps)
-    
+    if baselines is not None:
+        q_comps = torch.stack(q_comps) - baselines[0]
+        k_comps = torch.stack(k_comps) - baselines[1]
+        v_comps = torch.stack(v_comps) - baselines[2]
+    else:    
+        q_comps = torch.stack(q_comps)
+        k_comps = torch.stack(k_comps)
+        v_comps = torch.stack(v_comps)
     
     return q_comps.clamp(min=0).numpy(), k_comps.clamp(min=0).numpy(), v_comps.clamp(min=0).numpy()
 
 
 if __name__ == "__main__":
         
-    ckpt, ckpt_dir = load_model()
+    model_name = "Attention Only"
+    ckpt, ckpt_dir = load_model(model_name)
     
-    # epochs = list(range(190,201))
-    epochs = list(range(0,410))
-    ckpts = [ckpt_dir + f"epoch={epoch}-step={epoch*10+9}.ckpt" for epoch in epochs]
-    models = [GrokkingTransformer.load_from_checkpoint(ckpt) for ckpt in ckpts]
+    ckpts = [os.path.join(ckpt_dir, file) for file in os.listdir(ckpt_dir) if file.endswith(".ckpt")]
 
     q_comps = []
     k_comps = []
     v_comps = []
-    for model in tqdm(models):
-        q, k, v = compute_all_compositions(model.transformer[0].self_attn, model.transformer[1].self_attn)
+    baselines = None
+    for ckpt in tqdm(ckpts[-1:]):
+        model = GrokkingTransformer.load_from_checkpoint(ckpt)
+        if baselines is None:
+            baselines = compute_all_baselines(model.transformer[0].self_attn, num_samples=1000)
         
+        q, k, v = compute_all_compositions(model.transformer[0].self_attn, model.transformer[1].self_attn, baselines)
         q_comps.append(q)
         k_comps.append(k)
         v_comps.append(v)
@@ -142,6 +167,9 @@ if __name__ == "__main__":
     q_comps = np.array(q_comps).reshape(-1, 4, 4)
     k_comps = np.array(k_comps).reshape(-1, 4, 4)
     v_comps = np.array(v_comps).reshape(-1, 4, 4)
+    
+    # each row corresponds to a head in layer 0
+    # each column corresponds to a head in layer 1
     
     # q_max = q_comps.max(1).max(1)
     # k_max = k_comps.max(1).max(1)
@@ -155,6 +183,10 @@ if __name__ == "__main__":
     # plt.title('Max')
     # plt.show()
 
+    print(q_comps)
+    print(k_comps)
+    print(v_comps)
+    raise ValueError
     for i in range(4):
         fig, axes = plt.subplots(4,1, sharex=True)
         for j in range(4):
@@ -163,6 +195,7 @@ if __name__ == "__main__":
             axes[j].plot(v_comps[:,j,i], label='V')
         plt.legend()
         plt.savefig(f'head_{i}.png')
+        plt.show()
 
         
         
